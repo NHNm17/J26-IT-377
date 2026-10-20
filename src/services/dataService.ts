@@ -72,11 +72,19 @@ class FabricDataService {
    */
   public getFabricDistribution(): { type: string; count: number; percentage: number; color: string }[] {
     const colorMap: Record<string, string> = {
-      'Cotton': '#38bdf8', // sky blue
-      'Linen': '#34d399', // emerald
-      'Polyester': '#818cf8', // indigo
-      'Cotton-Poly Blend': '#fbbf24', // amber
-      'Silk': '#f472b6', // rose
+      'Pure Natural Flax Linen': '#10b981', // emerald
+      'Belgian Slub Linen': '#3b82f6', // stitch blue
+      'Washed Organic Linen': '#06b6d4', // cyan
+      'Fine Bleached Linen': '#a855f7', // purple
+      'Heavyweight Linen Canvas': '#f59e0b', // amber
+      'Herringbone Linen': '#6366f1', // indigo
+      'Raw Ecru Linen': '#ec4899', // pink
+      'Irish Table Linen': '#14b8a6', // teal
+      'Linen': '#10b981',
+      'Cotton': '#f59e0b', // amber
+      'Cotton Poly Blend': '#3b82f6', // stitch blue
+      'Polyester': '#06b6d4', // cyan
+      'Silk': '#a855f7', // purple
       'Unclassified': '#94a3b8' // slate
     };
 
