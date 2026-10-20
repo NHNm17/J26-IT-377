@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
-import { 
-  InspectionRecord 
-} from '../../types/inspection';
-import { 
-  Search, 
-  ChevronLeft, 
-  ChevronRight, 
-  AlertTriangle, 
-  CheckCircle, 
-  HelpCircle, 
-  Clock, 
-  Thermometer, 
-  Droplets, 
-  Zap, 
-  Eye, 
-  Info,
-  Calendar,
-  Tag
+import { InspectionRecord } from '../../types/inspection';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  AlertTriangle,
+  CheckCircle2,
+  HelpCircle,
+  Clock,
+  Thermometer,
+  Droplets,
+  Zap,
+  Eye,
+  EyeOff,
+  ZoomIn,
+  ZoomOut,
+  ImageOff
 } from 'lucide-react';
+import { Card, CardHeader, GradeBadge, formatTime, secondaryButton } from '../common/ui';
 
 interface FabricInspectionViewProps {
   records: InspectionRecord[];
@@ -25,423 +25,265 @@ interface FabricInspectionViewProps {
   onSelectRecordId: (id: string) => void;
 }
 
+type LightingMode = 'standard' | 'topLight' | 'infrared';
+
+const LIGHTING: { id: LightingMode; label: string; filter: string }[] = [
+  { id: 'standard', label: 'Standard', filter: '' },
+  { id: 'topLight', label: 'Top light', filter: 'brightness-125 contrast-125 saturate-110' },
+  { id: 'infrared', label: 'Near-IR', filter: 'invert hue-rotate-180 contrast-125 grayscale' }
+];
+
 export const FabricInspectionView: React.FC<FabricInspectionViewProps> = ({
   records,
   selectedRecordId,
   onSelectRecordId
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showDefectOverlay, setShowDefectOverlay] = useState(true);
-  const [lightingMode, setLightingMode] = useState<'standard' | 'topLight' | 'infrared'>('standard');
+  const [showDefects, setShowDefects] = useState(true);
+  const [lighting, setLighting] = useState<LightingMode>('standard');
+  const [zoom, setZoom] = useState(1);
 
-  const currentIndex = records.findIndex(r => r.sampleId === selectedRecordId);
-  const activeRecord = records[currentIndex] || records[0];
+  const foundIndex = records.findIndex(r => r.sampleId === selectedRecordId);
+  const currentIndex = foundIndex === -1 ? 0 : foundIndex;
+  const record = records[currentIndex];
+  if (!record) return null;
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      onSelectRecordId(records[currentIndex - 1].sampleId);
-    }
+  const go = (delta: number) => {
+    const next = records[currentIndex + delta];
+    if (next) onSelectRecordId(next.sampleId);
   };
 
-  const handleNext = () => {
-    if (currentIndex < records.length - 1) {
-      onSelectRecordId(records[currentIndex + 1].sampleId);
-    }
-  };
+  const ai = record.aiClassification;
+  const lightingFilter = LIGHTING.find(l => l.id === lighting)?.filter ?? '';
+  const navButton = `${secondaryButton} !px-2.5 disabled:opacity-40 disabled:cursor-not-allowed`;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Header & Sample Navigation Bar */}
-      <div className="p-4 rounded-2xl bg-industrial-900 border border-industrial-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Sample ID Selector */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={handlePrev}
-              disabled={currentIndex <= 0}
-              className="p-2 rounded-lg bg-industrial-850 hover:bg-industrial-800 disabled:opacity-30 disabled:cursor-not-allowed border border-industrial-700/60 text-slate-300 transition-colors"
-              title="Previous Sample"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={currentIndex >= records.length - 1}
-              className="p-2 rounded-lg bg-industrial-850 hover:bg-industrial-800 disabled:opacity-30 disabled:cursor-not-allowed border border-industrial-700/60 text-slate-300 transition-colors"
-              title="Next Sample"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="relative">
-            <select
-              value={activeRecord?.sampleId || ''}
-              onChange={(e) => onSelectRecordId(e.target.value)}
-              className="bg-industrial-850 border border-industrial-700 text-slate-200 text-sm rounded-xl px-4 py-2 font-mono font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer pr-10 appearance-none"
-            >
-              {records.map((r) => (
-                <option key={r.sampleId} value={r.sampleId}>
-                  {r.sampleId} ({r.aiClassification?.predictedFabricType || 'Pending'}) - {r.batchNumber}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-              ▼
-            </div>
-          </div>
-
-          <div className="hidden sm:flex items-center space-x-2 text-xs font-mono text-slate-400">
-            <span>Sample {currentIndex + 1} of {records.length}</span>
-          </div>
+    <div className="space-y-6">
+      {/* Sample switcher */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Inspection</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Batch {record.batchNumber} · {formatTime(record.timestamp)}
+          </p>
         </div>
 
-        {/* Search Filter */}
-        <div className="relative min-w-[260px]">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Quick search by ID, batch..."
-            className="w-full bg-industrial-850 border border-industrial-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="flex items-center gap-2">
+          <button onClick={() => go(-1)} disabled={currentIndex === 0} className={navButton} aria-label="Previous sample">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="relative">
+            <label htmlFor="sample-select" className="sr-only">Sample</label>
+            <select
+              id="sample-select"
+              value={record.sampleId}
+              onChange={(e) => onSelectRecordId(e.target.value)}
+              className="appearance-none h-10 rounded-xl border border-slate-200 dark:border-industrial-700 bg-white dark:bg-industrial-900 pl-3.5 pr-9 text-sm font-mono font-medium text-slate-900 dark:text-white cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            >
+              {records.map((r) => (
+                <option key={r.sampleId} value={r.sampleId}>{r.sampleId}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          </div>
+          <span className="hidden sm:block text-sm tabular-nums text-slate-500 dark:text-slate-400 px-1">
+            {currentIndex + 1}/{records.length}
+          </span>
+          <button onClick={() => go(1)} disabled={currentIndex === records.length - 1} className={navButton} aria-label="Next sample">
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      {/* Main Inspection Grid (Inspired by Smartex & 4inlab layout) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Fabric Image Viewer & Defect Annotations (8 cols) */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="rounded-2xl bg-industrial-900 border border-industrial-800 shadow-md overflow-hidden">
-            {/* Viewer Header */}
-            <div className="p-4 border-b border-industrial-800 bg-industrial-850/60 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center space-x-3">
-                <span className="text-xs font-bold font-mono text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-md border border-blue-500/30">
-                  {activeRecord.sampleId}
-                </span>
-                <span className="text-xs text-slate-400 flex items-center space-x-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{new Date(activeRecord.timestamp).toLocaleString()}</span>
-                </span>
-                <span className="text-xs font-mono text-slate-400 bg-industrial-800 px-2 py-0.5 rounded">
-                  Batch: {activeRecord.batchNumber}
-                </span>
-              </div>
-
-              {/* View & Lighting Mode Toggles (Smartex style) */}
-              <div className="flex items-center space-x-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Viewer */}
+        <Card className="xl:col-span-2 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-industrial-800">
+            <div className="inline-flex rounded-lg bg-slate-100 dark:bg-industrial-850 p-1" role="radiogroup" aria-label="Lighting">
+              {LIGHTING.map(({ id, label }) => (
                 <button
-                  onClick={() => setShowDefectOverlay(!showDefectOverlay)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center space-x-1.5 transition-colors ${
-                    showDefectOverlay
-                      ? 'bg-blue-600/20 text-blue-300 border-blue-500/40'
-                      : 'bg-industrial-800 text-slate-400 border-industrial-700'
+                  key={id}
+                  role="radio"
+                  aria-checked={lighting === id}
+                  onClick={() => setLighting(id)}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                    lighting === id
+                      ? 'bg-white dark:bg-industrial-700 text-slate-900 dark:text-white shadow-xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Anomaly Overlay</span>
+                  {label}
                 </button>
+              ))}
+            </div>
 
-                <div className="flex items-center bg-industrial-800 p-0.5 rounded-lg border border-industrial-700 text-xs">
-                  <button
-                    onClick={() => setLightingMode('standard')}
-                    className={`px-2 py-1 rounded-md font-medium transition-colors ${
-                      lightingMode === 'standard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Standard
-                  </button>
-                  <button
-                    onClick={() => setLightingMode('topLight')}
-                    className={`px-2 py-1 rounded-md font-medium transition-colors ${
-                      lightingMode === 'topLight' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Top Light
-                  </button>
-                  <button
-                    onClick={() => setLightingMode('infrared')}
-                    className={`px-2 py-1 rounded-md font-medium transition-colors ${
-                      lightingMode === 'infrared' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Infrared
-                  </button>
-                </div>
+            <div className="flex items-center gap-2">
+              {record.defects.length > 0 && (
+                <button
+                  onClick={() => setShowDefects(v => !v)}
+                  aria-pressed={showDefects}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-industrial-800 transition-colors cursor-pointer"
+                >
+                  {showDefects ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  Defects
+                </button>
+              )}
+              <div className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-industrial-850 p-1">
+                <button
+                  onClick={() => setZoom(z => Math.max(1, +(z - 0.25).toFixed(2)))}
+                  disabled={zoom <= 1}
+                  className="p-1 rounded-md text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 cursor-pointer"
+                  aria-label="Zoom out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="w-11 text-center text-xs tabular-nums text-slate-600 dark:text-slate-300">{zoom.toFixed(2)}×</span>
+                <button
+                  onClick={() => setZoom(z => Math.min(2, +(z + 0.25).toFixed(2)))}
+                  disabled={zoom >= 2}
+                  className="p-1 rounded-md text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 cursor-pointer"
+                  aria-label="Zoom in"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
               </div>
             </div>
+          </div>
 
-            {/* Fabric Image & Coordinate Grid Canvas */}
-            <div className="relative bg-industrial-950 p-3 min-h-[420px] flex items-center justify-center overflow-hidden">
-              {activeRecord.imageUrl ? (
-                <div className="relative w-full max-w-2xl aspect-[4/3] rounded-xl overflow-hidden border border-industrial-700/60 shadow-2xl">
-                  {/* Fabric Photo with simulated optical light filter */}
-                  <img
-                    src={activeRecord.imageUrl}
-                    alt={activeRecord.sampleId}
-                    className={`w-full h-full object-cover transition-all duration-300 ${
-                      lightingMode === 'topLight'
-                        ? 'brightness-125 contrast-110'
-                        : lightingMode === 'infrared'
-                        ? 'filter invert hue-rotate-180 brightness-90 contrast-125'
-                        : 'brightness-100'
-                    }`}
-                  />
-
-                  {/* Industrial Weave Grid Markers (Inspired by Smartex Screenshot) */}
-                  <div className="absolute inset-0 pointer-events-none bg-grid-pattern opacity-40" />
-
-                  {/* Weave Coordinate Ruler Labels */}
-                  <div className="absolute top-2 left-2 bg-industrial-950/80 backdrop-blur px-2 py-1 rounded text-[10px] font-mono text-slate-300 border border-slate-700">
-                    Pos: 0.20m — 1.60m | Optical Zoom: 2.4x
+          <div className="relative aspect-[16/10] bg-slate-900 overflow-hidden">
+            {record.imageUrl ? (
+              <div className="absolute inset-0 transition-transform duration-300" style={{ transform: `scale(${zoom})` }}>
+                <img
+                  src={record.imageUrl}
+                  alt={`Fabric sample ${record.sampleId}`}
+                  className={`w-full h-full object-cover transition-[filter] duration-300 ${lightingFilter}`}
+                />
+                {showDefects && record.defects.map((d) => d.boundingBox && (
+                  <div
+                    key={d.id}
+                    className="absolute rounded-md border-2 border-rose-500 bg-rose-500/15"
+                    style={{
+                      left: `${d.boundingBox.x}%`,
+                      top: `${d.boundingBox.y}%`,
+                      width: `${d.boundingBox.width}%`,
+                      height: `${d.boundingBox.height}%`
+                    }}
+                  >
+                    <span className="absolute -top-6 left-[-2px] whitespace-nowrap rounded-md bg-rose-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                      {d.label}
+                    </span>
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
+                <ImageOff className="w-10 h-10" />
+                <p className="text-sm">No image captured for this sample</p>
+              </div>
+            )}
+          </div>
 
-                  {/* Defect Bounding Boxes Overlay */}
-                  {showDefectOverlay && activeRecord.defects && activeRecord.defects.length > 0 && (
-                    <>
-                      {activeRecord.defects.map((defect) => {
-                        if (!defect.boundingBox) return null;
-                        return (
-                          <div
-                            key={defect.id}
-                            style={{
-                              left: `${defect.boundingBox.x}%`,
-                              top: `${defect.boundingBox.y}%`,
-                              width: `${defect.boundingBox.width}%`,
-                              height: `${defect.boundingBox.height}%`
-                            }}
-                            className="absolute border-2 border-rose-500 bg-rose-500/20 backdrop-blur-[1px] rounded shadow-lg animate-pulse"
-                          >
-                            <div className="absolute -top-6 left-0 bg-rose-600 text-white font-mono text-[10px] px-1.5 py-0.5 rounded shadow flex items-center space-x-1 whitespace-nowrap">
-                              <span>{defect.label}</span>
-                              {defect.confidence && (
-                                <span className="text-rose-200">({defect.confidence.toFixed(1)}%)</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center p-10 text-slate-500">
-                  <HelpCircle className="w-12 h-12 mx-auto text-slate-600 mb-2" />
-                  <p className="text-sm">Fabric image not captured or available for this sample.</p>
-                </div>
-              )}
-            </div>
+          {record.operatorNotes && (
+            <p className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-industrial-800">
+              {record.operatorNotes}
+            </p>
+          )}
+        </Card>
 
-            {/* Operator Notes Footer */}
-            <div className="p-3 bg-industrial-850/50 border-t border-industrial-800 text-xs text-slate-400 flex items-start space-x-2">
-              <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+        {/* Results + sensors */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="Result" action={<GradeBadge grade={record.qualityGrade} />} />
+            <div className="px-5 pb-5 space-y-5">
               <div>
-                <span className="font-semibold text-slate-300">Observation Notes: </span>
-                <span>{activeRecord.operatorNotes || 'No anomalies recorded during optical pass.'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Multi-Sensor Readouts & AI Decision Support (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
-          {/* AI Results & Classification Card (Member 3 Output) */}
-          <div className="p-5 rounded-2xl bg-industrial-900 border border-industrial-800 shadow-md space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-industrial-800">
-              <div className="flex items-center space-x-2">
-                <Tag className="w-4 h-4 text-blue-400" />
-                <h3 className="text-sm font-semibold text-slate-200">AI Differentiation Results</h3>
-              </div>
-              <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded font-bold ${
-                activeRecord.qualityGrade === 'Grade A' 
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : activeRecord.qualityGrade === 'Grade B'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  : activeRecord.qualityGrade === 'Reject'
-                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                  : 'bg-slate-700/40 text-slate-400 border border-slate-600/40'
-              }`}>
-                {activeRecord.qualityGrade}
-              </span>
-            </div>
-
-            {/* Fabric Classification */}
-            <div className="p-3.5 rounded-xl bg-industrial-850/80 border border-industrial-800 space-y-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-mono">
-                Predicted Fabric Material
-              </span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-xl font-bold text-white tracking-tight">
-                  {activeRecord.aiClassification?.predictedFabricType || (
-                    <span className="text-slate-500 italic font-normal text-sm">
-                      {activeRecord.aiClassification?.status === 'pending' ? 'Pending AI Worker' : 'Not Available'}
-                    </span>
-                  )}
-                </span>
-                {activeRecord.aiClassification?.confidence !== undefined && (
-                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    {activeRecord.aiClassification.confidence.toFixed(1)}% Confidence
-                  </span>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Fabric type</p>
+                <p className="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  {ai?.predictedFabricType ?? (ai?.status === 'pending' ? 'Awaiting model…' : 'Not available')}
+                </p>
+                {ai?.confidence !== undefined && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-industrial-800 overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${ai.confidence}%` }} />
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-white">{ai.confidence.toFixed(1)}%</span>
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Defect Status Box */}
-            <div className="p-3.5 rounded-xl bg-industrial-850/80 border border-industrial-800 space-y-2">
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-mono">
-                Defect Detection (YOLOv8)
-              </span>
-
-              {activeRecord.defectStatus === 'defect_detected' ? (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 text-rose-400 text-xs font-semibold">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>{activeRecord.defects.length} Defect(s) Identified</span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {activeRecord.defects.map(d => (
-                      <div key={d.id} className="p-2 rounded bg-industrial-900 border border-rose-500/20 text-xs flex justify-between items-center">
-                        <div>
-                          <span className="text-slate-200 font-medium">{d.label}</span>
-                          <span className="text-[10px] text-slate-500 block uppercase font-mono">{d.type}</span>
+              <div className="pt-5 border-t border-slate-100 dark:border-industrial-800">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Defects</p>
+                {record.defectStatus === 'defect_detected' ? (
+                  <ul className="mt-2 space-y-2">
+                    {record.defects.map(d => (
+                      <li key={d.id} className="flex items-center gap-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 px-3 py-2.5">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{d.label}</p>
+                          <p className="text-xs capitalize text-slate-500 dark:text-slate-400">{d.type.replace('_', ' ')} · {d.severity}</p>
                         </div>
-                        {d.confidence && (
-                          <span className="text-rose-400 font-mono text-[11px]">
-                            {d.confidence.toFixed(1)}%
-                          </span>
+                        {d.confidence !== undefined && (
+                          <span className="text-sm font-semibold tabular-nums text-rose-600 dark:text-rose-400">{d.confidence.toFixed(1)}%</span>
                         )}
-                      </div>
+                      </li>
                     ))}
-                  </div>
-                </div>
-              ) : activeRecord.defectStatus === 'no_defect_detected' ? (
-                <div className="flex items-center space-x-2 text-emerald-400 text-xs font-medium py-1">
-                  <CheckCircle className="w-4 h-4" />
-                  <span>No defect detected. Surface weave clean.</span>
-                </div>
-              ) : activeRecord.defectStatus === 'defect_result_unavailable' ? (
-                <div className="flex items-center space-x-2 text-slate-400 text-xs font-medium py-1">
-                  <HelpCircle className="w-4 h-4 text-slate-500" />
-                  <span>Defect result unavailable for this sample.</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 text-amber-400 text-xs font-medium py-1">
-                  <Clock className="w-4 h-4 animate-spin" />
-                  <span>Pending defect inference from model worker.</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Integrated Multi-Sensor Telemetry */}
-          <div className="p-5 rounded-2xl bg-industrial-900 border border-industrial-800 shadow-md space-y-4">
-            <div className="flex items-center space-x-2 pb-3 border-b border-industrial-800">
-              <Zap className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-semibold text-slate-200">Hardware Sensor Telemetry</h3>
-            </div>
-
-            {/* TCS3200 Optical Sensor Readings */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-mono text-[11px]">TCS3200 Optical Sensor</span>
-                {activeRecord.opticalSensor && (
-                  <div className="flex items-center space-x-1.5">
-                    <span 
-                      className="w-3 h-3 rounded-full border border-slate-600 shadow-inner"
-                      style={{ backgroundColor: activeRecord.opticalSensor.dominantColorHex }}
-                    />
-                    <span className="font-mono text-[10px] text-slate-400">
-                      {activeRecord.opticalSensor.dominantColorHex}
-                    </span>
-                  </div>
+                  </ul>
+                ) : (
+                  <p className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {record.defectStatus === 'no_defect_detected' && <><CheckCircle2 className="w-4 h-4 text-emerald-500" />No defects found</>}
+                    {record.defectStatus === 'pending' && <><Clock className="w-4 h-4 text-amber-500" />Awaiting defect model</>}
+                    {record.defectStatus === 'defect_result_unavailable' && <><HelpCircle className="w-4 h-4 text-slate-400" />Result unavailable</>}
+                  </p>
                 )}
               </div>
-
-              {activeRecord.opticalSensor ? (
-                <div className="grid grid-cols-4 gap-1.5 text-center font-mono">
-                  <div className="bg-industrial-850 p-2 rounded-lg border border-industrial-800">
-                    <span className="text-[9px] text-rose-400 block font-bold">R</span>
-                    <span className="text-xs font-semibold text-slate-200">{activeRecord.opticalSensor.red}</span>
-                  </div>
-                  <div className="bg-industrial-850 p-2 rounded-lg border border-industrial-800">
-                    <span className="text-[9px] text-emerald-400 block font-bold">G</span>
-                    <span className="text-xs font-semibold text-slate-200">{activeRecord.opticalSensor.green}</span>
-                  </div>
-                  <div className="bg-industrial-850 p-2 rounded-lg border border-industrial-800">
-                    <span className="text-[9px] text-blue-400 block font-bold">B</span>
-                    <span className="text-xs font-semibold text-slate-200">{activeRecord.opticalSensor.blue}</span>
-                  </div>
-                  <div className="bg-industrial-850 p-2 rounded-lg border border-industrial-800">
-                    <span className="text-[9px] text-slate-400 block font-bold">CLEAR</span>
-                    <span className="text-xs font-semibold text-slate-200">{activeRecord.opticalSensor.clear}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-2.5 rounded bg-industrial-850 text-xs text-slate-500 font-mono text-center">
-                  TCS3200 reading not received
-                </div>
-              )}
             </div>
+          </Card>
 
-            {/* FDC1004 Capacitive Sensor Readings */}
-            <div className="space-y-1.5 pt-2 border-t border-industrial-800">
-              <span className="text-slate-400 font-mono text-[11px] block">FDC1004 Capacitive Sensor</span>
-              {activeRecord.capacitanceSensor && activeRecord.capacitanceSensor.status === 'connected' ? (
-                <div className="p-2.5 rounded-lg bg-industrial-850 border border-industrial-800 flex items-center justify-between font-mono">
-                  <span className="text-xs text-slate-400">CH1 Capacitance:</span>
-                  <span className="text-xs font-bold text-cyan-400">
-                    {activeRecord.capacitanceSensor.ch1_pf.toFixed(2)} pF
-                  </span>
+          <Card>
+            <CardHeader title="Sensors" />
+            <div className="px-5 pb-5 space-y-4">
+              {/* Optical */}
+              <div className="flex items-center gap-3">
+                <span
+                  className="w-10 h-10 rounded-xl ring-1 ring-inset ring-black/10 shrink-0"
+                  style={{ backgroundColor: record.opticalSensor?.dominantColorHex ?? 'transparent' }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Colour (TCS3200)</p>
+                  {record.opticalSensor ? (
+                    <p className="text-sm font-mono text-slate-900 dark:text-white">
+                      <span className="text-rose-500">R</span> {record.opticalSensor.red}{' '}
+                      <span className="text-emerald-500">G</span> {record.opticalSensor.green}{' '}
+                      <span className="text-blue-500">B</span> {record.opticalSensor.blue}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-400">No reading</p>
+                  )}
                 </div>
-              ) : (
-                <div className="p-2 rounded-lg bg-industrial-850/50 border border-industrial-800 text-xs text-slate-500 flex items-center space-x-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-                  <span>Not connected / Bypassed</span>
-                </div>
-              )}
-            </div>
-
-            {/* DHT11 Environmental Ambient Readings */}
-            <div className="space-y-1.5 pt-2 border-t border-industrial-800">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-mono text-[11px]">DHT11 Environmental Sensor</span>
-                <span className="text-[9px] text-slate-500 font-mono">Ambient Only</span>
               </div>
 
-              {activeRecord.ambientSensor ? (
-                <div className="grid grid-cols-2 gap-2 font-mono">
-                  <div className="p-2 rounded-lg bg-industrial-850 border border-industrial-800 flex items-center space-x-2">
-                    <Thermometer className="w-4 h-4 text-amber-400 shrink-0" />
-                    <div>
-                      <span className="text-[9px] text-slate-500 block">AMBIENT TEMP</span>
-                      <span className="text-xs font-semibold text-slate-200">
-                        {activeRecord.ambientSensor.temperatureC.toFixed(1)}°C
-                      </span>
-                    </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  {
+                    icon: Zap, tone: 'text-cyan-500', label: 'Capacitance',
+                    value: record.capacitanceSensor?.status === 'connected' ? `${record.capacitanceSensor.ch1_pf.toFixed(2)} pF` : '—'
+                  },
+                  {
+                    icon: Thermometer, tone: 'text-amber-500', label: 'Temp',
+                    value: record.ambientSensor ? `${record.ambientSensor.temperatureC.toFixed(1)}°C` : '—'
+                  },
+                  {
+                    icon: Droplets, tone: 'text-blue-500', label: 'Humidity',
+                    value: record.ambientSensor ? `${record.ambientSensor.humidityPercent.toFixed(0)}%` : '—'
+                  }
+                ].map(({ icon: Icon, tone, label, value }) => (
+                  <div key={label} className="rounded-xl bg-slate-50 dark:bg-industrial-850 p-3">
+                    <Icon className={`w-4 h-4 ${tone}`} />
+                    <p className="mt-2 text-sm font-semibold tabular-nums text-slate-900 dark:text-white">{value}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
                   </div>
-
-                  <div className="p-2 rounded-lg bg-industrial-850 border border-industrial-800 flex items-center space-x-2">
-                    <Droplets className="w-4 h-4 text-blue-400 shrink-0" />
-                    <div>
-                      <span className="text-[9px] text-slate-500 block">AMBIENT HUMIDITY</span>
-                      <span className="text-xs font-semibold text-slate-200">
-                        {activeRecord.ambientSensor.humidityPercent.toFixed(1)}% RH
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-2 rounded bg-industrial-850 text-xs text-slate-500 font-mono text-center">
-                  DHT11 ambient telemetry not available
-                </div>
-              )}
-
-              <p className="text-[10px] text-slate-500 italic mt-1">
-                * Note: Labeled as ambient temperature & humidity; does not measure internal fabric moisture.
-              </p>
+                ))}
+              </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

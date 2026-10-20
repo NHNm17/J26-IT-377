@@ -1,134 +1,146 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Microscope, 
-  History, 
-  Cpu, 
-  Activity
+import {
+  LayoutDashboard,
+  Microscope,
+  History,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+  Moon
 } from 'lucide-react';
+import { BrandLogo } from '../common/BrandLogo';
+import { UserProfile } from '../auth/LoginView';
 
-export type NavigationTab = 'overview' | 'inspection' | 'history' | 'status';
+export type NavigationTab = 'overview' | 'inspection' | 'history';
 
 interface SidebarProps {
-  currentTab: NavigationTab;
+  currentTab: string;
   onSelectTab: (tab: NavigationTab) => void;
   recordCount: number;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+  onLogout: () => void;
+  onGoHome: () => void;
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
+  currentUser: UserProfile;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, recordCount }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentTab,
+  onSelectTab,
+  recordCount,
+  isCollapsed,
+  onToggleCollapse,
+  onLogout,
+  onGoHome,
+  isDarkMode,
+  onToggleTheme,
+  currentUser
+}) => {
   const navItems = [
-    {
-      id: 'overview' as NavigationTab,
-      label: 'Overview',
-      subtitle: 'System metrics & live stats',
-      icon: LayoutDashboard,
-      badge: null
-    },
-    {
-      id: 'inspection' as NavigationTab,
-      label: 'Fabric Inspection',
-      subtitle: 'Sensors & defect analysis',
-      icon: Microscope,
-      badge: 'Interactive'
-    },
-    {
-      id: 'history' as NavigationTab,
-      label: 'Inspection History',
-      subtitle: 'Searchable inspection logs',
-      icon: History,
-      badge: `${recordCount} items`
-    },
-    {
-      id: 'status' as NavigationTab,
-      label: 'System Status',
-      subtitle: 'Pipeline nodes & diagnostics',
-      icon: Cpu,
-      badge: 'Verified'
-    }
+    { id: 'overview' as NavigationTab, label: 'Overview', icon: LayoutDashboard, badge: null },
+    { id: 'inspection' as NavigationTab, label: 'Inspection', icon: Microscope, badge: null },
+    { id: 'history' as NavigationTab, label: 'History', icon: History, badge: recordCount }
   ];
 
-  return (
-    <aside className="w-64 bg-industrial-900 border-r border-industrial-800 flex flex-col justify-between shrink-0 select-none">
-      <div className="p-4 space-y-6">
-        {/* Navigation Category Label */}
-        <div>
-          <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
-            Monitoring Modules
-          </p>
-          <nav className="space-y-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectTab(item.id)}
-                  className={`w-full flex items-start space-x-3 px-3.5 py-3 rounded-xl transition-all duration-150 text-left relative ${
-                    isActive
-                      ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 font-medium shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-industrial-800/60 border border-transparent'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-500'}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm tracking-tight">{item.label}</span>
-                      {item.badge && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                          isActive 
-                            ? 'bg-blue-500/20 text-blue-300' 
-                            : 'bg-industrial-800 text-slate-400'
-                        }`}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-slate-500 block truncate">
-                      {item.subtitle}
-                    </span>
-                  </div>
-                  {isActive && (
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-l-full" />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+  const iconButton =
+    'p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-industrial-800 transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500';
 
-        {/* Prototype Specifications Card */}
-        <div className="p-3.5 rounded-xl bg-industrial-850/80 border border-industrial-800 text-xs text-slate-400 space-y-2.5">
-          <div className="flex items-center space-x-2 text-slate-300 font-medium">
-            <Activity className="w-3.5 h-3.5 text-blue-400" />
-            <span>Integrated Sensors</span>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
-            <div className="bg-industrial-900/90 p-1.5 rounded border border-industrial-800">
-              <span className="text-slate-500 block text-[9px]">OPTICAL</span>
-              <span className="text-slate-300 font-semibold">TCS3200</span>
-            </div>
-            <div className="bg-industrial-900/90 p-1.5 rounded border border-industrial-800">
-              <span className="text-slate-500 block text-[9px]">CAPACITANCE</span>
-              <span className="text-slate-300 font-semibold">FDC1004</span>
-            </div>
-            <div className="bg-industrial-900/90 p-1.5 rounded border border-industrial-800 col-span-2">
-              <span className="text-slate-500 block text-[9px]">ENVIRONMENTAL</span>
-              <span className="text-slate-300 font-semibold">DHT11 Ambient Temp/Hum</span>
-            </div>
-          </div>
-        </div>
+  return (
+    <aside
+      className={`h-screen shrink-0 flex flex-col bg-white dark:bg-industrial-900 border-r border-slate-200 dark:border-industrial-800 select-none transition-[width] duration-300 ease-in-out ${
+        isCollapsed ? 'w-[72px]' : 'w-64'
+      }`}
+    >
+      {/* Brand */}
+      <div className={`h-16 flex items-center shrink-0 border-b border-slate-200 dark:border-industrial-800 ${isCollapsed ? 'justify-center' : 'px-4'}`}>
+        <button
+          onClick={onGoHome}
+          className="rounded-lg cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+          title="FabricSense home"
+        >
+          <BrandLogo size="md" showText={!isCollapsed} showTagline={false} />
+        </button>
       </div>
 
-      {/* Footer Operator Info */}
-      <div className="p-4 border-t border-industrial-800/80 bg-industrial-950/40">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-300">
-            WL
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto p-3 space-y-1" aria-label="Workspace">
+        {navItems.map(({ id, label, icon: Icon, badge }) => {
+          const isActive = currentTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onSelectTab(id)}
+              title={isCollapsed ? label : undefined}
+              aria-current={isActive ? 'page' : undefined}
+              className={`w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                isCollapsed ? 'justify-center h-11' : 'px-3 h-10'
+              } ${
+                isActive
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-industrial-800 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Icon className="w-[18px] h-[18px] shrink-0" />
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1 text-left">{label}</span>
+                  {badge !== null && (
+                    <span className={`text-xs tabular-nums rounded-md px-1.5 ${isActive ? 'bg-blue-100 dark:bg-blue-500/20' : 'bg-slate-100 dark:bg-industrial-800'}`}>
+                      {badge}
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Footer: preferences + account */}
+      <div className="shrink-0 border-t border-slate-200 dark:border-industrial-800 p-3 space-y-2">
+        <div className={`flex ${isCollapsed ? 'flex-col items-center gap-1' : 'items-center justify-between'}`}>
+          <button
+            onClick={onToggleTheme}
+            className={iconButton}
+            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDarkMode ? 'Light mode' : 'Dark mode'}
+          >
+            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={onToggleCollapse}
+            className={iconButton}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <div className={`flex items-center gap-3 rounded-xl ${isCollapsed ? 'flex-col' : 'p-2 bg-slate-50 dark:bg-industrial-850'}`}>
+          <div
+            className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold"
+            title={isCollapsed ? currentUser.name : undefined}
+          >
+            {currentUser.avatar}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-slate-200 truncate">Wasana Lakmini</p>
-            <p className="text-[10px] text-slate-500 font-mono truncate">IT23362512 · QC Lead</p>
-          </div>
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{currentUser.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{currentUser.id}</p>
+            </div>
+          )}
+          <button
+            onClick={onLogout}
+            className={`${iconButton} hover:!text-rose-500`}
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

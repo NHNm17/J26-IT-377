@@ -1,4 +1,17 @@
-export type FabricType = 'Cotton' | 'Polyester' | 'Silk' | 'Linen' | 'Cotton-Poly Blend' | 'Wool' | 'Rayon';
+export type FabricType = 
+  | 'Pure Natural Flax Linen' 
+  | 'Belgian Slub Linen' 
+  | 'Washed Organic Linen' 
+  | 'Fine Bleached Linen' 
+  | 'Heavyweight Linen Canvas' 
+  | 'Herringbone Linen' 
+  | 'Raw Ecru Linen'
+  | 'Irish Table Linen'
+  | 'Linen'
+  | 'Cotton'
+  | 'Cotton Poly Blend'
+  | 'Polyester'
+  | 'Silk';
 
 export type DefectType = 'hole' | 'tear' | 'stain' | 'wrinkle' | 'weaving_defect';
 
